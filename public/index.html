@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Test Client</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .chat-container {
+      width: 100%;
+      max-width: 800px;
+      background-color: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      display: flex;
+      flex-direction: column;
+      height: 90vh;
+    }
+
+    .chat-header {
+      background-color: #4e54c8;
+      color: white;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      background-color: rgba(255, 255, 255, 0.2);
+      padding: 5px 10px;
+      border-radius: 20px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #4CAF50;
+      margin-right: 8px;
+    }
+
+    .chat-main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 200px;
+      background-color: #f5f7fb;
+      padding: 15px;
+      border-right: 1px solid #e5e5e5;
+    }
+
+    .sidebar h3 {
+      margin-bottom: 15px;
+      color: #4e54c8;
+    }
+
+    .user-list {
+      list-style: none;
+    }
+
+    .user-list li {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .user-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background-color: #4e54c8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+
+    .chat-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .join-section {
+      padding: 15px;
+      background-color: #f9f9f9;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    .input-group {
+      display: flex;
+      margin-bottom: 10px;
+    }
+
+    .input-group input {
+      flex: 1;
+      padding: 10px 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      outline: none;
+    }
+
+    .input-group button {
+      background-color: #4e54c8;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 10px 15px;
+      margin-left: 10px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .input-group button:hover {
+      background-color: #3f43a1;
+    }
+
+    .messages-container {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      background-color: #f5f7fb;
+    }
+
+    .message {
+      margin-bottom: 15px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .message-content {
+      padding: 10px 15px;
+      border-radius: 18px;
+      max-width: 80%;
+      word-wrap: break-word;
+    }
+
+    .message-info {
+      font-size: 0.7rem;
+      margin-top: 5px;
+      color: #777;
+    }
+
+    .received {
+      align-items: flex-start;
+    }
+
+    .received .message-content {
+      background-color: #e5e5ea;
+      border-top-left-radius: 4px;
+    }
+
+    .sent {
+      align-items: flex-end;
+    }
+
+    .sent .message-content {
+      background-color: #4e54c8;
+      color: white;
+      border-top-right-radius: 4px;
+    }
+
+    .system-message {
+      align-items: center;
+      margin: 10px 0;
+    }
+
+    .system-message .message-content {
+      background-color: #fef3cd;
+      color: #856404;
+      font-style: italic;
+      text-align: center;
+    }
+
+    .message-input {
+      padding: 15px;
+      background-color: white;
+      border-top: 1px solid #e5e5e5;
+      display: flex;
+    }
+
+    .message-input input {
+      flex: 1;
+      padding: 12px 15px;
+      border: 1px solid #ddd;
+      border-radius: 24px;
+      outline: none;
+      font-size: 1rem;
+    }
+
+    .message-input button {
+      background-color: #4e54c8;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 45px;
+      height: 45px;
+      margin-left: 10px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background-color 0.3s;
+    }
+
+    .message-input button:hover {
+      background-color: #3f43a1;
+    }
+
+    @media (max-width: 768px) {
+      .chat-main {
+        flex-direction: column;
+      }
+      
+      .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #e5e5e5;
+      }
+      
+      .chat-container {
+        height: 95vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <h1>Chat Application</h1>
+      <div class="status-indicator">
+        <div class="status-dot"></div>
+        <span id="status-text">Connected</span>
+      </div>
+    </div>
+    
+    <div class="chat-main">
+      <div class="sidebar">
+        <h3>Online Users</h3>
+        <ul class="user-list" id="user-list">
+          <li><div class="user-avatar">Y</div> You</li>
+        </ul>
+      </div>
+      
+      <div class="chat-content">
+        <div class="join-section">
+          <div class="input-group">
+            <input type="text" id="username" placeholder="Username">
+            <input type="text" id="room" placeholder="Room">
+            <button onclick="joinRoom()">Join Room</button>
+          </div>
+        </div>
+        
+        <div class="messages-container" id="messages"></div>
+        
+        <div class="message-input">
+          <input type="text" id="message" placeholder="Type your message...">
+          <button onclick="sendMessage()">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Connect to the server
+    const socket = io('http://localhost:3000');
+    let currentUsername = '';
+    let currentRoom = '';
+    
+    // Connection status
+    socket.on('connect', () => {
+      console.log('Connected to server');
+      document.getElementById('status-text').textContent = 'Connected';
+    });
+    
+    socket.on('disconnect', () => {
+      console.log('Disconnected from server');
+      document.getElementById('status-text').textContent = 'Disconnected';
+    });
+    
+    // Handle incoming messages
+    socket.on('message', (data) => {
+      addMessage(data.message, data.username, false);
+    });
+    
+    // Handle user join notifications
+    socket.on('userJoined', (data) => {
+      addSystemMessage(`${data.username} joined the room (${data.count} users)`);
+      updateUserList(data.users);
+    });
+    
+    // Handle user leave notifications
+    socket.on('userLeft', (data) => {
+      addSystemMessage(`${data.username} left the room (${data.count} users)`);
+      updateUserList(data.users);
+    });
+    
+    // Handle user list updates
+    socket.on('userList', (data) => {
+      updateUserList(data.users);
+    });
+    
+    // Join room function
+    function joinRoom() {
+      const username = document.getElementById('username').value;
+      const room = document.getElementById('room').value;
+      
+      if (!username || !room) {
+        alert('Please enter both username and room name');
+        return;
+      }
+      
+      currentUsername = username;
+      currentRoom = room;
+      
+      socket.emit('joinRoom', { username, room });
+      
+      // Update UI
+      document.getElementById('username').disabled = true;
+      document.getElementById('room').disabled = true;
+      document.querySelector('.join-section button').disabled = true;
+      document.querySelector('.join-section button').textContent = 'Joined';
+      
+      addSystemMessage(`You joined room: ${room}`);
+    }
+    
+    // Send message function
+    function sendMessage() {
+      const message = document.getElementById('message').value;
+      
+      if (!message) return;
+      
+      if (!currentUsername || !currentRoom) {
+        alert('Please join a room first');
+        return;
+      }
+      
+      socket.emit('chatMessage', message);
+      
+      // Add message to UI immediately (optimistic update)
+      addMessage(message, currentUsername, true);
+      
+      // Clear input
+      document.getElementById('message').value = '';
+    }
+    
+    // Add message to UI
+    function addMessage(content, sender, isSent = false) {
+      const messages = document.getElementById('messages');
+      const messageElement = document.createElement('div');
+      messageElement.classList.add('message', isSent ? 'sent' : 'received');
+      
+      const messageContent = document.createElement('div');
+      messageContent.classList.add('message-content');
+      messageContent.textContent = content;
+      
+      const messageInfo = document.createElement('div');
+      messageInfo.classList.add('message-info');
+      
+      // Format timestamp
+      const now = new Date();
+      const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      messageInfo.textContent = isSent ? `You • ${timeString}` : `${sender} • ${timeString}`;
+      
+      messageElement.appendChild(messageContent);
+      messageElement.appendChild(messageInfo);
+      
+      messages.appendChild(messageElement);
+      
+      // Scroll to bottom
+      messages.scrollTop = messages.scrollHeight;
+    }
+    
+    // Add system message to UI
+    function addSystemMessage(content) {
+      const messages = document.getElementById('messages');
+      const messageElement = document.createElement('div');
+      messageElement.classList.add('message', 'system-message');
+      
+      const messageContent = document.createElement('div');
+      messageContent.classList.add('message-content');
+      messageContent.textContent = content;
+      
+      messageElement.appendChild(messageContent);
+      messages.appendChild(messageElement);
+      
+      // Scroll to bottom
+      messages.scrollTop = messages.scrollHeight;
+    }
+    
+    // Update user list
+    function updateUserList(users) {
+      const userList = document.getElementById('user-list');
+      userList.innerHTML = '';
+      
+      // Add current user first
+      const currentUserItem = document.createElement('li');
+      currentUserItem.innerHTML = '<div class="user-avatar">' + (currentUsername ? currentUsername.charAt(0).toUpperCase() : 'Y') + '</div> You' + (currentUsername ? ` (${currentUsername})` : '');
+      userList.appendChild(currentUserItem);
+      
+      // Add other users
+      users.forEach(user => {
+        if (user !== currentUsername) {
+          const userItem = document.createElement('li');
+          userItem.innerHTML = '<div class="user-avatar">' + user.charAt(0).toUpperCase() + '</div> ' + user;
+          userList.appendChild(userItem);
+        }
+      });
+    }
+    
+    // Allow sending message with Enter key
+    document.getElementById('message').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+  </script>
+</body>
+</html>
