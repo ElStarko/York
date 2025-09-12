@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<<<<<<< Updated upstream
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chat Test Client</title>
@@ -254,46 +255,56 @@
       }
     }
   </style>
+=======
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Application with User Management</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+>>>>>>> Stashed changes
 </head>
 <body>
-  <div class="chat-container">
-    <div class="chat-header">
-      <h1>Chat Application</h1>
-      <div class="status-indicator">
-        <div class="status-dot"></div>
-        <span id="status-text">Connected</span>
-      </div>
-    </div>
-    
-    <div class="chat-main">
-      <div class="sidebar">
-        <h3>Online Users</h3>
-        <ul class="user-list" id="user-list">
-          <li><div class="user-avatar">Y</div> You</li>
-        </ul>
-      </div>
-      
-      <div class="chat-content">
-        <div class="join-section">
-          <div class="input-group">
-            <input type="text" id="username" placeholder="Username">
-            <input type="text" id="room" placeholder="Room">
-            <button onclick="joinRoom()">Join Room</button>
-          </div>
+    <!-- Auth Container (shown by default) -->
+    <div class="container" id="auth-container">
+        <div class="auth-form">
+            <h2>Welcome to ChatApp</h2>
+            
+            <div class="tabs">
+                <button class="tab-button active" id="login-tab">Login</button>
+                <button class="tab-button" id="register-tab">Register</button>
+            </div>
+            
+            <form id="login-form">
+                <div class="input-group">
+                    <input type="text" id="login-username" placeholder="Username" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="login-password" placeholder="Password" required>
+                </div>
+                <button type="submit" class="auth-button">Login</button>
+            </form>
+            
+            <form id="register-form" class="hidden">
+                <div class="input-group">
+                    <input type="text" id="register-username" placeholder="Username" required>
+                </div>
+                <div class="input-group">
+                    <input type="email" id="register-email" placeholder="Email" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="register-password" placeholder="Password" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="register-confirm-password" placeholder="Confirm Password" required>
+                </div>
+                <button type="submit" class="auth-button">Register</button>
+            </form>
+            
+            <div id="auth-message" class="message"></div>
         </div>
-        
-        <div class="messages-container" id="messages"></div>
-        
-        <div class="message-input">
-          <input type="text" id="message" placeholder="Type your message...">
-          <button onclick="sendMessage()">
-            <i class="fas fa-paper-plane"></i>
-          </button>
-        </div>
-      </div>
     </div>
-  </div>
 
+<<<<<<< Updated upstream
   <script>
     // Connect to the server
     const socket = io();
@@ -449,5 +460,76 @@
       }
     });
   </script>
+=======
+    <!-- Chat Container (hidden by default) -->
+    <div class="chat-container hidden" id="chat-container">
+        <div class="chat-header">
+            <h1>Chat Application</h1>
+            <div class="user-info">
+                <span id="current-user">Username</span>
+                <button id="logout-button">Logout</button>
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    <span id="status-text">Disconnected</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chat-main">
+            <div class="sidebar">
+                <h3>Online Users <span id="online-count">0</span></h3>
+                <ul class="user-list" id="user-list">
+                    <li>
+                        <div class="user-info-container">
+                            <div class="user-avatar">Y</div> 
+                            <span>You</span>
+                        </div>
+                    </li>
+                </ul>
+                
+                <h3>Rooms</h3>
+                <div class="room-section">
+                    <input type="text" id="room" placeholder="Room name">
+                    <button onclick="joinRoom()">Join Room</button>
+                </div>
+
+                <div class="admin-section">
+                    <h3>
+                        All Users 
+                        <button class="refresh-btn" onclick="loadAllUsers()">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </h3>
+                    <ul class="user-list" id="all-users-list">
+                        <li>Loading users...</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="chat-content">
+                <div class="messages-container" id="messages">
+                    <div class="message-bubble system-message">
+                        <div class="message-content">
+                            Welcome to the chat! Join a room to start messaging.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="message-input">
+                    <input type="text" id="message" placeholder="Type your message..." disabled>
+                    <button onclick="sendMessage()" disabled>
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="debug-info" id="debug-info">
+        Debug: Not connected
+    </div>
+
+    <script  src="script.js"></script>
+>>>>>>> Stashed changes
 </body>
 </html>

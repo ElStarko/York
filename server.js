@@ -2,148 +2,275 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
+
+// Enable CORS for all routes
+app.use(cors({
+    origin: ["http://127.0.0.1:5500", "http://localhost:5500", "http://localhost:3000"],
+    credentials: true
+}));
+
+// Configure Socket.IO for production
 const io = socketIo(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
+    origin: ["http://127.0.0.1:5500", "http://localhost:5500", "http://localhost:3000"], // Allow all origins for now, tighten this later
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
-// Serve static files from the public directory
+// Middleware
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Store active rooms and their users
-const activeRooms = new Map();
+// Simple in-memory user storage (use a database in production)
+const users = new Map();
+// Store active users and rooms
+const activeUsers = new Map();
+const rooms = new Map();
 
-// Socket.IO connection handling
-io.on('connection', (socket) => {
-  console.log('New user connected:', socket.id);
+// JWT secret (use environment variable in production)
+const JWT_SECRET = process.env.JWT_SECRET || 'nonearme';
 
-  // Handle joining a room
-  socket.on('joinRoom', (data) => {
-    const { username, room } = data;
+// Logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
+});
+
+// Auth routes
+app.post('/api/register', async (req, res) => {
+  try {
+    console.log('Registration attempt:', req.body);
+    const { username, password, email } = req.body;
     
-    // Leave any existing rooms
-    if (socket.room) {
-      socket.leave(socket.room);
-      
-      // Remove user from active rooms data
-      if (activeRooms.has(socket.room)) {
-        const users = activeRooms.get(socket.room);
-        const index = users.findIndex(user => user.id === socket.id);
-        if (index !== -1) {
-          users.splice(index, 1);
-          if (users.length === 0) {
-            activeRooms.delete(socket.room);
-          } else {
-            activeRooms.set(socket.room, users);
-          }
-        }
-      }
+    // Input validation
+    if (!username || !password || !email) {
+      return res.status(400).json({ error: 'Username, password, and email are required' });
     }
+    
+    if (users.has(username)) {
+      return res.status(400).json({ error: 'Username already exists' });
+    }
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Store user
+    users.set(username, {
+      username,
+      password: hashedPassword,
+      email,
+      createdAt: new Date()
+    });
+    
+    // Generate token
+    const token = jwt.sign({ username }, JWT_SECRET);
+    
+    console.log('User registered successfully:', username);
+    res.status(201).json({ 
+      message: 'User created successfully', 
+      token,
+      user: { username, email }
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
-    // Join the new room
-    socket.join(room);
-    socket.room = room;
+app.post('/api/login', async (req, res) => {
+  try {
+    console.log('Login attempt:', req.body);
+    const { username, password } = req.body;
+    
+    // Input validation
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+    
+    const user = users.get(username);
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
+    
+    // Check password
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
+    
+    // Generate token
+    const token = jwt.sign({ username }, JWT_SECRET);
+    
+    console.log('User logged in successfully:', username);
+    res.json({ 
+      message: 'Logged in successfully', 
+      token,
+      user: { username, email: user.email }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    users: users.size,
+    activeUsers: activeUsers.size,
+    rooms: rooms.size
+  });
+});
+
+// Socket.IO middleware for authentication
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+  console.log('Authentication attempt with token', token)
+
+  if (!token) {
+    console.log('Authentication error: No token provided');
+    return next(new Error('Authentication error'));
+  }
+  
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) {
+      console.log('Authentication error: Invalid token');
+      return next(new Error('Authentication error'));
+    }
+    socket.user = decoded;
+    next();
+  });
+});
+
+// Handle socket connections
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.user.username);
+  
+  // Store active user
+  activeUsers.set(socket.user.username, {
+    socketId: socket.id,
+    username: socket.user.username,
+    connectedAt: new Date()
+  });
+  
+  // Send active users list to all clients
+  io.emit('activeUsers', Array.from(activeUsers.values()));
+  
+  socket.on('joinRoom', (data) => {
+    const { room } = data;
+    const username = socket.user.username;
+    
+    // Input validation
+    if (!room) {
+      console.log('Join room error: No room specified');
+      return;
+    }
+    
+    // Store user information
     socket.username = username;
-
-    // Add user to active rooms data
-    if (!activeRooms.has(room)) {
-      activeRooms.set(room, []);
+    socket.room = room;
+    
+    // Join the room
+    socket.join(room);
+    
+    // Add user to room
+    if (!rooms.has(room)) {
+      rooms.set(room, new Set());
     }
-    const users = activeRooms.get(room);
-    users.push({ id: socket.id, username });
-    activeRooms.set(room, users);
-
-    // Notify room that a user has joined
+    rooms.get(room).add(username);
+    
+    // Notify others in the room
     socket.to(room).emit('userJoined', {
       username,
-      count: users.length
+      count: rooms.get(room).size
     });
-
-    // Send current users list to the new user
+    
+    // Send current user list to the new user
     socket.emit('userList', {
-      users: users.map(user => user.username),
-      count: users.length
+      users: Array.from(rooms.get(room))
     });
 
     console.log(`${username} joined room: ${room}`);
   });
 
-  // Handle chat messages
-  socket.on('chatMessage', (message) => {
-    if (socket.room) {
+  socket.on('chatMessage', (data) => {
+    const user = users.get(socket.username);
+    if (user && socket.room) {
       io.to(socket.room).emit('message', {
         username: socket.username,
-        message: message,
-        timestamp: new Date().toISOString()
+        message: data.message,
+        id: data.id || Date.now().toString(),
+        timestamp: new Date()
       });
-      console.log(`Message in ${socket.room} from ${socket.username}: ${message}`);
+    } else {
+      console.log('Chat message error: User not in a room');
     }
   });
 
-  // Handle disconnection
-  socket.on('disconnect', () => {
-    if (socket.room && activeRooms.has(socket.room)) {
-      const users = activeRooms.get(socket.room);
-      const index = users.findIndex(user => user.id === socket.id);
-      
-      if (index !== -1) {
-        const username = users[index].username;
-        users.splice(index, 1);
+  socket.on('logout', () => {
+    // Remove from active users
+    activeUsers.delete(socket.user.username);
+    io.emit('activeUsers', Array.from(activeUsers.values()));
+    
+    // Leave room if in one
+    if (socket.room) {
+      if (rooms.has(socket.room)) {
+        rooms.get(socket.room).delete(socket.username);
         
-        if (users.length === 0) {
-          activeRooms.delete(socket.room);
-        } else {
-          activeRooms.set(socket.room, users);
-        }
-
-        // Notify room that a user has left
+        // Notify others in the room
         socket.to(socket.room).emit('userLeft', {
-          username: username,
-          count: users.length
+          username: socket.username,
+          count: rooms.get(socket.room).size
         });
         
-        console.log(`${username} left room: ${socket.room}`);
+        // Remove room if empty
+        if (rooms.get(socket.room).size === 0) {
+          rooms.delete(socket.room);
+        }
       }
     }
     
-    console.log('User disconnected:', socket.id);
+    console.log('User logged out:', socket.user.username);
   });
-});
 
-  // Send the current user count to the newly connected client
-    const userCount = io.engine.clientsCount;
-    io.emit('user count', userCount);
-
-
-// API endpoint to get active rooms
-app.get('/api/rooms', (req, res) => {
-  const rooms = [];
-  for (const [room, users] of activeRooms.entries()) {
-    rooms.push({
-      name: room,
-      userCount: users.length
-    });
-  }
-  res.json(rooms);
-});
-
-// API endpoint to get users in a specific room
-app.get('/api/rooms/:room/users', (req, res) => {
-  const room = req.params.room;
-  if (activeRooms.has(room)) {
-    const users = activeRooms.get(room).map(user => user.username);
-    res.json({ room, users, count: users.length });
-  } else {
-    res.status(404).json({ error: 'Room not found' });
-  }
+  socket.on('disconnect', () => {
+    // Remove from active users
+    activeUsers.delete(socket.user.username);
+    io.emit('activeUsers', Array.from(activeUsers.values()));
+    
+    // Leave room if in one
+    if (socket.room) {
+      if (rooms.has(socket.room)) {
+        rooms.get(socket.room).delete(socket.username);
+        
+        // Notify others in the room
+        socket.to(socket.room).emit('userLeft', {
+          username: socket.username,
+          count: rooms.get(socket.room).size
+        });
+        
+        // Remove room if empty
+        if (rooms.get(socket.room).size === 0) {
+          rooms.delete(socket.room);
+        }
+      }
+    }
+    
+    console.log('User disconnected:', socket.user.username);
+  });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
