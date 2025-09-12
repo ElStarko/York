@@ -22,7 +22,8 @@
   "keywords": [
     "chat",
     "socket.io",
-    "real-time"
+    "real-time",
+    "mongodb"
   ],
   "author": "ElStarko",
   "engines": {

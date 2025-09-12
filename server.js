@@ -80,7 +80,7 @@ const activeUsers = new Map();
 const rooms = new Map();
 
 // JWT secret
-const JWT_SECRET = process.env.JWT_SECRET || 'nonearme';
+const JWT_SECRET = process.env.JWT_SECRET || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoiNjQwZjk5YTMyMDg0Zjc1YmU5OThlMGZhIn0sImlhdCI6MTY3ODc0Mzk3MiwiZXhwIjoxNjc5MTAzOTcyfQ.RbksDZ3O9U12bgnJ9Z_Gh65uyswfqPZ6K2peGFRNy2k';
 
 // Logging middleware
 app.use((req, res, next) => {
