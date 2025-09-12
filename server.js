@@ -5,6 +5,7 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const mongoose = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
@@ -28,13 +29,122 @@ const io = socketIo(server, {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Simple in-memory user storage (use a database in production)
+const MONGODB_URL = process.env.MONGOOSE_URL || 'mongodb://localhost:27017/chat-app';
+
+mongoose.connect(MONGODB_URL, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => {
+  console.log('COnnected to MongoDB');
+})
+.catch((err) => {
+  console.error('Error connecting to MongoDB:', err);
+});
+
+//User Schema
+const userSchema = new mongoose.Schema({
+  username: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    minlength: 3,
+    maxlength: 30
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    lowercase: true
+  },
+  password: {
+    type: String,
+    required: true,
+    minlength: 6
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+const messageSchema = new mongoose.Schema({
+  room: {
+    type: String,
+    required: true
+  },
+  username: {
+    type: String,
+    required: true
+  },
+  message: {
+    type: String,
+    required: true
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+const Message = mongoose.model('Message', messageSchema);
+
+// Save messages to database
+socket.on('chatMessage', async (data) => {
+  if (socket.room) {
+    // Save message to database
+    const newMessage = new Message({
+      room: socket.room,
+      username: socket.user.username,
+      message: data.message
+    });
+    
+    await newMessage.save();
+    
+    io.to(socket.room).emit('message', {
+      username: socket.user.username,
+      message: data.message,
+      id: data.id || Date.now().toString(),
+      timestamp: new Date()
+    });
+  }
+});
+
+// Retrieve message history when joining a room
+app.get('/api/messages/:room', async (req, res) => {
+  const { room } = req.params;
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+  
+  try {
+    jwt.verify(token, JWT_SECRET);
+    
+    const messages = await Message.find({ room })
+      .sort({ timestamp: 1 })
+      .limit(50); // Get last 50 messages
+    
+    res.json(messages);
+  } catch (error) {
+    console.error('Error retrieving messages:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+//Create User Model
+const User = mongoose.model('User', userSchema);
+
+// Simple in-memory user storage 
 const users = new Map();
 // Store active users and rooms
 const activeUsers = new Map();
 const rooms = new Map();
 
-// JWT secret (use environment variable in production)
+// JWT secret
 const JWT_SECRET = process.env.JWT_SECRET || 'nonearme';
 
 // Logging middleware
@@ -53,30 +163,44 @@ app.post('/api/register', async (req, res) => {
     if (!username || !password || !email) {
       return res.status(400).json({ error: 'Username, password, and email are required' });
     }
-    
-    if (users.has(username)) {
+
+    const existingUser = await User.findOne({username})
+    if (existingUser) {
       return res.status(400).json({ error: 'Username already exists' });
     }
-    
+
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+      return res.status(400).json({ error: 'Email already exists' });
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Store user
-    users.set(username, {
+    const newUser = new User({
       username,
-      password: hashedPassword,
       email,
-      createdAt: new Date()
+      password: hashedPassword
     });
+
+     // Save user to database
+    const savedUser = await newUser.save();
     
-    // Generate token
-    const token = jwt.sign({ username }, JWT_SECRET);
+     // Generate token
+    const token = jwt.sign({ 
+      username: savedUser.username, 
+      id: savedUser._id 
+    }, JWT_SECRET);
     
-    console.log('User registered successfully:', username);
+    console.log('User registered successfully:', savedUser.username);
     res.status(201).json({ 
       message: 'User created successfully', 
       token,
-      user: { username, email }
+      user: { 
+        username: savedUser.username, 
+        email: savedUser.email, 
+        id: savedUser._id 
+      }
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -86,7 +210,6 @@ app.post('/api/register', async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
   try {
-    console.log('Login attempt:', req.body);
     const { username, password } = req.body;
     
     // Input validation
@@ -94,7 +217,7 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ error: 'Username and password are required' });
     }
     
-    const user = users.get(username);
+    const user = await User.findOne({ username });
     if (!user) {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
@@ -105,18 +228,77 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
     
-    // Generate token
-    const token = jwt.sign({ username }, JWT_SECRET);
+     // Generate token
+    const token = jwt.sign({ 
+      username: user.username, 
+      id: user._id 
+    }, JWT_SECRET);
     
-    console.log('User logged in successfully:', username);
+    console.log('User logged in successfully:', user.username);
     res.json({ 
       message: 'Logged in successfully', 
       token,
-      user: { username, email: user.email }
+      user: { 
+        username: user.username, 
+        email: user.email, 
+        id: user._id 
+      }
     });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get all users
+app.get('/api/users', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+  
+  try {
+    jwt.verify(token, JWT_SECRET);
+    
+    // Get all users from database
+    const users = await User.find({}, 'username email createdAt').sort({ username: 1 });
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Token verification error:', error);
+    res.status(403).json({ error: 'Invalid token' });
+  }
+});
+
+// Delete a user
+app.delete('/api/users/:id', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  const userId = req.params.id;
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Users can only delete themselves (or add admin logic here)
+    if (decoded.id !== userId) {
+      return res.status(403).json({ error: 'You can only delete your own account' });
+    }
+    
+    // Delete user from database
+    const result = await User.findByIdAndDelete(userId);
+    
+    if (!result) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Token verification error:', error);
+    res.status(403).json({ error: 'Invalid token' });
   }
 });
 
@@ -127,7 +309,8 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     users: users.size,
     activeUsers: activeUsers.size,
-    rooms: rooms.size
+    rooms: rooms.size,
+    dbStatus: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
   });
 });
 
@@ -273,4 +456,12 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('Shutting down server...');
+  await mongoose.connection.close();
+  console.log('MongoDB connection closed');
+  process.exit(0);
 });
