@@ -1,11 +1,7 @@
 {
   "name": "chat-app",
   "version": "1.0.0",
-<<<<<<< Updated upstream
-  "description": "A real-time chat application with Socket.IO",
-=======
   "description": "A real-time chat app with Socket.IO",
->>>>>>> Stashed changes
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -19,24 +15,15 @@
     "socket.io": "^4.5.0"
   },
   "devDependencies": {
-<<<<<<< Updated upstream
-    "nodemon": "^2.0.20"
-=======
     "nodemon": "^2.0.20",
     "socket.io-client": "^4.8.1"
->>>>>>> Stashed changes
   },
   "keywords": [
     "chat",
     "socket.io",
     "real-time"
   ],
-<<<<<<< Updated upstream
-  "author": "Your Name",
-  "license": "MIT",
-=======
   "author": "ElStarko",
->>>>>>> Stashed changes
   "engines": {
     "node": ">=14.0.0"
   }
