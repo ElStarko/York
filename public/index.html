@@ -37,7 +37,7 @@
     }
 
     .chat-header {
-      background-color: #4e54c8;
+      background-color: #1c218a;
       color: white;
       padding: 20px;
       display: flex;
@@ -324,6 +324,7 @@
     
     // Handle incoming messages
     socket.on('message', (data) => {
+      console.log("message handler...",data)
       addMessage(data.message, data.username, false);
     });
     
@@ -381,17 +382,17 @@
       
       socket.emit('chatMessage', message);
       
-      // Add message to UI immediately (optimistic update)
-      addMessage(message, currentUsername, true);
-      
+    
       // Clear input
       document.getElementById('message').value = '';
     }
     
     // Add message to UI
-    function addMessage(content, sender, isSent = false) {
+    function addMessage(content, sender) {
+      const isSent = sender === currentUsername; 
       const messages = document.getElementById('messages');
       const messageElement = document.createElement('div');
+      console.log(isSent,111)
       messageElement.classList.add('message', isSent ? 'sent' : 'received');
       
       const messageContent = document.createElement('div');
