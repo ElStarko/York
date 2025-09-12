@@ -29,7 +29,7 @@ const io = socketIo(server, {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const MONGODB_URL = process.env.MONGOOSE_URL || 'mongodb://localhost:27017/chat-app';
+const MONGODB_URL = process.env.MONGOOSE_URL || 'mongodb+srv://Mindless:Mcqueenparker@cluster0.xttqnkw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 
 mongoose.connect(MONGODB_URL, {
   useNewUrlParser: true,
