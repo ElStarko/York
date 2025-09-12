@@ -21,7 +21,7 @@
 
         // Server URL - adjust based on your environment
         // For Live Server, we need to use the correct URL and handle CORS
-        const SERVER_URL = 'http://localhost:3000'; // Your backend server URL
+        const SERVER_URL = 'https://york-0dir.onrender.com'; // Your backend server URL
 
         // Update debug info
         function updateDebugInfo(message) {

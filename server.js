@@ -11,14 +11,14 @@ const server = http.createServer(app);
 
 // Enable CORS for all routes
 app.use(cors({
-    origin: ["http://127.0.0.1:5500", "http://localhost:5500", "http://localhost:3000"],
+    origin: ["https://york-0dir.onrender.com", "http://127.0.0.1:5500", "http://localhost:5500", "http://localhost:3000"],
     credentials: true
 }));
 
 // Configure Socket.IO for production
 const io = socketIo(server, {
   cors: {
-    origin: ["http://127.0.0.1:5500", "http://localhost:5500", "http://localhost:3000"], // Allow all origins for now, tighten this later
+    origin: ["https://york-0dir.onrender.com", "http://127.0.0.1:5500", "http://localhost:5500", "http://localhost:3000"], // Allow all origins for now, tighten this later
     methods: ["GET", "POST"],
     credentials: true
   }
