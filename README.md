@@ -83,46 +83,7 @@ https://documenter.getpostman.com/view/26234378/2sB3HqHxx7
 
 For detailed API documentation and testing, check our Postman collection:
 
-1. **Import the collection**
-   - Download the collection JSON file from `/docs/postman-collection.json`
-   - Import into Postman
-
-2. **Environment setup**
-   - Create a new environment in Postman
-   - Add variables:
-     - `baseUrl`: Your API base URL (e.g., https://your-backend-app.onrender.com)
-     - `token`: Will be automatically set after login
-
-3. **Testing workflow**
-   - Start with the registration or login request
-   - Use the returned token in subsequent requests
-   - Test the protected endpoints with the token
-
-### Example Requests
-
-**Register a new user:**
-```bash
-curl -X POST https://york-0dir.onrender.com/api/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"password123","email":"test@example.com"}'
-```
-
-**Login:**
-```bash
-curl -X POST https://york-0dir.onrender.com/api/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"password123"}'
-```
-
-**Get all users (authenticated):**
-```bash
-curl -X GET https://york-0dir.onrender.com/api/users \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
 ## 🎯 Usage Guide
-
-### For Users
 
 1. **Registration & Login**
    - Create an account with username, email, and password
