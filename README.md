@@ -77,35 +77,6 @@ https://york-0dir.onrender.com
      - `JWT_SECRET`: A strong secret key for JWT
      - `NODE_ENV`: production
 
-## 📚 API Documentation
-
-### Authentication Endpoints
-
-| Method | Endpoint | Description | Authentication |
-|--------|----------|-------------|----------------|
-| POST | `/api/register` | Register a new user | No |
-| POST | `/api/login` | Login user | No |
-
-### User Management Endpoints
-
-| Method | Endpoint | Description | Authentication |
-|--------|----------|-------------|----------------|
-| GET | `/api/users` | Get all users | Required (Bearer Token) |
-| DELETE | `/api/users/:id` | Delete a user | Required (Bearer Token) |
-
-### Room Management Endpoints
-
-| Method | Endpoint | Description | Authentication |
-|--------|----------|-------------|----------------|
-| GET | `/api/rooms/:room/users` | Get users in a room | Required (Bearer Token) |
-| GET | `/api/rooms/:room/messages` | Get message history | Required (Bearer Token) |
-
-### Health Check
-
-| Method | Endpoint | Description | Authentication |
-|--------|----------|-------------|----------------|
-| GET | `/api/health` | Server health check | No |
-
 ## 🧪 Postman Documentation
 
 https://documenter.getpostman.com/view/26234378/2sB3HqHxx7
