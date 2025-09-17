@@ -120,6 +120,61 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+<<<<<<< Updated upstream
+=======
+// Get all users
+app.get('/api/users', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+  
+  try {
+    jwt.verify(token, JWT_SECRET);
+    
+    // Get all users from database
+    const users = await User.find({}, 'username email createdAt').sort({ username: 1 });
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Token verification error:', error);
+    res.status(403).json({ error: 'Invalid token' });
+  }
+});
+
+// Delete a user
+app.delete('/api/users/:id', async (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  const userId = req.params.id;
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Users can only delete themselves
+    if (decoded.id !== userId) {
+      return res.status(403).json({ error: 'You can only delete your own account' });
+    }
+    
+    // Delete user from database
+    const result = await User.findByIdAndDelete(userId);
+    
+    if (!result) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Token verification error:', error);
+    res.status(403).json({ error: 'Invalid token' });
+  }
+});
+
+>>>>>>> Stashed changes
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -204,8 +259,8 @@ io.on('connection', (socket) => {
 
   socket.on('chatMessage', (data) => {
     const user = users.get(socket.username);
-    if (user && socket.room) {
-      io.to(socket.room).emit('message', {
+    if (user && room) {
+      io.to(room).emit('message', {
         username: socket.username,
         message: data.message,
         id: data.id || Date.now().toString(),
